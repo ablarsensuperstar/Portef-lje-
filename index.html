@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Datatest</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{--bg:#0a0e14;--panel:#121821;--bsoft:#2a3441;--text:#e6edf3;--muted:#8b98a9;--faint:#5b6675;--green:#3fb950;--red:#f85149;--accent:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Schibsted Grotesk',-apple-system,system-ui,sans-serif;padding:20px 16px 48px}
+  .wrap{max-width:480px;margin:0 auto}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+  h1{font-size:17px;font-weight:600;margin:0 0 2px}
+  .sub{font-size:12px;color:var(--faint)}
+  .banner{margin:16px 0;padding:14px;border-radius:12px;font-size:14px;font-weight:500}
+  .ok{background:#0f2417;border:1px solid var(--green);color:#7ee787}
+  .bad{background:#2a1416;border:1px solid var(--red);color:#ffb4ad}
+  .wait{background:var(--panel);border:1px solid var(--bsoft);color:var(--muted)}
+  .row{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;border-bottom:1px solid #1f2937}
+  .row:last-child{border-bottom:none}
+  .nm{font-size:14px}
+  .tk{font-size:11px;color:var(--faint)}
+  .px{font-family:'IBM Plex Mono',monospace;font-size:16px}
+  .card{background:var(--panel);border:1px solid var(--bsoft);border-radius:12px;padding:6px 14px;margin-top:8px}
+  button{font-family:inherit;background:var(--accent);color:#04111f;border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer}
+  .err{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#ffb4ad;word-break:break-word;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Datatest &middot; live kurser</h1>
+  <div class="sub">Henter et par kurser fra Yahoo via rel&aelig;. Ingen af dine tal er i denne fil.</div>
+  <div id="banner" class="banner wait">Tester forbindelse&hellip;</div>
+  <div id="list" class="card"></div>
+  <div id="err"></div>
+  <button id="retry">Pr&oslash;v igen</button>
+</div>
+<script>
+const TESTS=[
+  {tk:"DNORD.CO",nm:"D/S Norden"},
+  {tk:"NOVO-B.CO",nm:"Novo Nordisk B"},
+  {tk:"AAPL",nm:"Apple"}
+];
+const RELAYS=[
+  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
+  u=>"https://corsproxy.io/?url="+encodeURIComponent(u)
+];
+async function viaRelay(yurl){
+  let lastErr="";
+  for(const make of RELAYS){
+    try{
+      const res=await fetch(make(yurl));
+      if(!res.ok){lastErr="HTTP "+res.status;continue;}
+      const txt=await res.text();
+      return JSON.parse(txt);
+    }catch(e){lastErr=e.message||String(e);}
+  }
+  throw new Error(lastErr||"alle rel\u00e6er fejlede");
+}
+async function quote(tk){
+  const yurl="https://query1.finance.yahoo.com/v8/finance/chart/"+tk+"?range=5d&interval=1d";
+  const j=await viaRelay(yurl);
+  const r=j&&j.chart&&j.chart.result&&j.chart.result[0];
+  if(!r||!r.meta) throw new Error("uventet svar for "+tk);
+  return {price:r.meta.regularMarketPrice, cur:r.meta.currency};
+}
+async function run(){
+  const banner=document.getElementById("banner");
+  const list=document.getElementById("list");
+  const err=document.getElementById("err");
+  banner.className="banner wait";banner.textContent="Tester forbindelse\u2026";
+  list.innerHTML="";err.innerHTML="";
+  let okCount=0;
+  for(const t of TESTS){
+    const id="r_"+t.tk.replace(/[^A-Za-z]/g,"");
+    list.insertAdjacentHTML("beforeend",
+      '<div class="row"><div><div class="nm">'+t.nm+'</div><div class="tk mono">'+t.tk+'</div></div><div class="px" id="'+id+'">\u2026</div></div>');
+    try{
+      const q=await quote(t.tk);
+      okCount++;
+      document.getElementById(id).textContent=(q.price!=null?q.price.toLocaleString("da-DK",{maximumFractionDigits:2}):"\u2013")+" "+(q.cur||"");
+    }catch(e){
+      document.getElementById(id).textContent="fejl";
+      document.getElementById(id).style.color="var(--red)";
+      err.innerHTML+='<div class="err">'+t.tk+": "+(e.message||e)+'</div>';
+    }
+  }
+  if(okCount>0){banner.className="banner ok";banner.textContent="\u2713 Det virker! Hosting + live data er p\u00e5 plads ("+okCount+"/"+TESTS.length+" hentet).";}
+  else{banner.className="banner bad";banner.textContent="\u2717 Kunne ikke hente data. Send mig fejlteksten nedenfor, s\u00e5 finder vi et andet rel\u00e6.";}
+}
+document.getElementById("retry").onclick=run;
+run();
+</script>
+</body>
+</html>
