@@ -58,8 +58,9 @@ var RELAYS=[function(u){return "https://api.allorigins.win/raw?url="+encodeURICo
 var FXFALL={DKK:1,USD:6.9,EUR:7.46,NOK:0.62,SEK:0.65,GBP:8.7,CAD:5.0};
 var NAMEFIX={"NAT":"Nordic American Tankers","TNK":"Teekay Tankers","MRVL":"Marvell Technology","COST":"Costco Wholesale","ZEAL.CO":"Zealand Pharma","KOG.OL":"Kongsberg Gruppen","STNG":"Scorpio Tankers","IPCO.ST":"International Petroleum","GN.CO":"GN Store Nord","INSW":"International Seaways","AEHR":"Aehr Test Systems","INRG.MI":"iShares Clean Energy ETF","COIN":"Coinbase Global","RIOT":"Riot Platforms","LHX":"L3Harris Technologies","RGTI":"Rigetti Computing","ETOR":"eToro Group","HAUTO.OL":"H\u00f6egh Autoliners","UAMY":"United States Antimony","MP":"MP Materials","GLXY":"Galaxy Digital","MIR":"Mirion Technologies","SOFI":"SoFi Technologies","LAC-NEW.TO":"Lithium Americas","LEU":"Centrus Energy","AREC":"American Resources"};
 function nm(h){if(NAMEFIX[h.y])return NAMEFIX[h.y];if(h.n&&h.n.indexOf("Instrument")<0&&h.n.trim().length>2)return h.n;return (h.y||"").split(".")[0];}
+var SYMFIX={"TEN-NEW":"TEN","HAFNIA.OL":"HAFNI.OL","LAC-NEW.TO":"LAC.TO"};
 var HOLD=null,PORT={r:0,d:0},MKT={},FX={DKK:1};
-var TAB="over",SORT="mv",DIR=-1,PROG=null,ALLOC={sec:null,bra:null};
+var TAB="over",SORT="mv",DIR=-1,PROG=null,ALLOC={sektor:[],land:[]};
 
 function lsGet(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
@@ -110,7 +111,7 @@ async function refreshAll(force,missingOnly){
   PROG={done:0,total:todo.length||1,note:"Henter kurser ("+cached+"/"+HOLD.length+" fra cache)\u2026"}; render();
   await pool(todo, async function(h){
     await sleep(120);
-    for(var a=0;a<3;a++){ try{ var r=await fetchSym(h.y); MKT[h.y]=r; return; }catch(e){ await sleep(500+a*1100); } }
+    for(var a=0;a<3;a++){ try{ var r=await fetchSym(SYMFIX[h.y]||h.y); MKT[h.y]=r; return; }catch(e){ await sleep(500+a*1100); } }
     if(!MKT[h.y]||MKT[h.y].p==null)MKT[h.y]={p:null,prev:null,cur:h.c,cl:[],at:Date.now(),fail:true};
   }, 2, function(d,t){ PROG.done=d; PROG.total=t; render(); });
   if(!lsSet(KEYS.mkt,MKT)){ var lite={}; for(var k in MKT){lite[k]={p:MKT[k].p,prev:MKT[k].prev,cur:MKT[k].cur,cl:[],at:MKT[k].at,fail:MKT[k].fail};} lsSet(KEYS.mkt,lite); }
@@ -124,8 +125,8 @@ function periods(cl,price){
   var now=cl[cl.length-1][0];
   function back(days){var tgt=now-days*86400000;var pick=null;for(var i=0;i<cl.length;i++){if(cl[i][0]<=tgt)pick=cl[i];else break;}return pick;}
   function ytd(){var d=new Date(now);var j=new Date(d.getFullYear(),0,1).getTime();var pick=null;for(var i=0;i<cl.length;i++){if(cl[i][0]<j)pick=cl[i];else break;}return pick;}
-  var defs=[["Dag",cl.length>1?cl[cl.length-2]:null],["Uge",back(7)],["2 uger",back(14)],["3 uger",back(21)],["M\u00e5ned",back(30)],["YTD",ytd()],["52 uger",back(365)]];
-  return defs.map(function(d){var r=d[1];return r?{label:d[0],pct:(price/r[1]-1)*100,ref:r[1]}:{label:d[0],pct:null,ref:null};});
+  var defs=[["Dag","day",cl.length>1?cl[cl.length-2]:null],["Uge","week",back(7)],["2 uger","w2",back(14)],["3 uger","w3",back(21)],["M\u00e5ned","month",back(30)],["6 uger","w6",back(42)],["2 mdr","m2",back(60)],["2,5 mdr","m25",back(75)],["3 mdr","m3",back(90)],["6 mdr","m6",back(180)],["YTD","ytd",ytd()],["52 uger","y52",back(365)]];
+  return defs.map(function(d){var r=d[2];return r?{label:d[0],key:d[1],pct:(price/r[1]-1)*100,ref:r[1]}:{label:d[0],key:d[1],pct:null,ref:null};});
 }
 function derive(h){
   var m=MKT[h.y]||{}; var fx=fxOf(h.c);
@@ -141,7 +142,7 @@ function derive(h){
     per:per, div:h.d||0};
 }
 function deriveAll(){return HOLD.map(derive);}
-function periodPct(d,key){ if(!d.per)return null; var idx={day:0,week:1,w2:2,w3:3,month:4,ytd:5,y52:6}[key]; var p=d.per[idx]; return p?p.pct:null; }
+function periodPct(d,key){ if(!d.per)return null; for(var i=0;i<d.per.length;i++){if(d.per[i].key===key)return d.per[i].pct;} return null; }
 
 /* ---------- render ---------- */
 function render(){
@@ -188,7 +189,7 @@ function overView(){
 }
 function kpi(l,v,c){return '<div class="kpi"><div class="lbl">'+l+'</div><div class="v" style="color:'+(c||"var(--text)")+'">'+v+'</div></div>';}
 
-var SORTS=[["mv","V\u00e6rdi"],["gevpct","Afkast"],["day","Dag"],["week","Uge"],["month","M\u00e5ned"],["ytd","YTD"],["y52","52u"],["name","Navn"]];
+var SORTS=[["mv","V\u00e6rdi"],["gevpct","Afkast"],["day","Dag"],["week","Uge"],["month","M\u00e5ned"],["w6","6u"],["m2","2m"],["m3","3m"],["m6","6m"],["ytd","YTD"],["y52","52u"],["name","Navn"]];
 function mktView(){
   var d=deriveAll();
   function metric(x){ if(SORT==="mv")return x.mv||-1e18; if(SORT==="gevpct")return x.gevpct==null?-1e18:x.gevpct; if(SORT==="name")return x.h.n.toLowerCase();
@@ -216,16 +217,21 @@ function allocView(){
   var top1=sorted.length?100*sorted[0].mv/tot:0, top5=100*sorted.slice(0,5).reduce(function(s,x){return s+x.mv;},0)/tot;
   function sumv(a){return a.reduce(function(s,x){return s+x.mv;},0);}
   function grp(arr,f){var g={};arr.forEach(function(x){var k=f(x)||"\u2013";(g[k]=g[k]||[]).push(x);});return Object.keys(g).map(function(k){return {k:k,items:g[k],v:sumv(g[k])};}).sort(function(a,b){return b.v-a.v;});}
-  function bar(label,v,depth,tap,open){var w=Math.round(100*v/tot),pad=depth*14,arrow=tap?(open?"\u2212 ":"+ "):"";
-    return '<div class="li2" '+(tap?'data-alloc="'+tap+'"':'')+' style="padding-left:'+pad+'px"><div class="row"><div style="font-size:13.5px">'+arrow+label+'</div><div class="mono" style="font-size:13px">'+fmt(100*v/tot,1)+' %</div></div><div class="bar" style="margin-top:5px"><i style="width:'+w+'%"></i></div><div class="faint mono" style="font-size:11px;margin-top:2px">'+kr(v)+'</div></div>';}
-  var rows="";
-  grp(d,function(x){return x.h.se;}).forEach(function(sx){var openS=ALLOC.sec===sx.k;rows+=bar(sx.k,sx.v,0,"sec:"+sx.k,openS);
-    if(openS){grp(sx.items,function(x){return x.h.br;}).forEach(function(bx){var bk=sx.k+"|"+bx.k,openB=ALLOC.bra===bk;rows+=bar(bx.k,bx.v,1,"bra:"+bk,openB);
-      if(openB){grp(bx.items,function(x){return x.h.te;}).forEach(function(tx){rows+=bar(tx.k,tx.v,2,null,false);});}});}});
-  var landRows=grp(d,function(x){return x.h.co;}).map(function(r){return bar(r.k,r.v,0,null,false);}).join("");
+  function bar(label,v,depth,tap,open){var w=Math.round(100*v/tot),pad=depth*14,arrow=open?"\u2212 ":"+ ";
+    return '<div class="li2" data-alloc="'+tap+'" style="padding-left:'+pad+'px"><div class="row"><div style="font-size:13.5px">'+arrow+label+'</div><div class="mono" style="font-size:13px">'+fmt(100*v/tot,1)+' %</div></div><div class="bar" style="margin-top:5px"><i style="width:'+w+'%"></i></div><div class="faint mono" style="font-size:11px;margin-top:2px">'+kr(v)+'</div></div>';}
+  function paperRow(x,depth){var pad=depth*14;
+    return '<div class="li2" data-paper="'+x.h.y+'" style="padding-left:'+pad+'px"><div class="row"><div style="min-width:0"><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50vw">\u2022 '+nm(x.h)+'</div><div class="tk mono">'+x.h.y+'</div></div><div style="text-align:right"><div class="mono" style="font-size:13px">'+fmt(100*x.mv/tot,1)+' %</div><div class="faint mono" style="font-size:11px">'+kr(x.mv)+'</div></div></div></div>';}
+  function level(items,keys,path,depth,prefix){var html="";
+    if(depth>=keys.length){items.slice().sort(function(a,b){return b.mv-a.mv;}).forEach(function(x){html+=paperRow(x,depth);});return html;}
+    grp(items,keys[depth]).forEach(function(g){var isOpen=path[depth]===g.k,tap=prefix+"|"+depth+"|"+g.k;html+=bar(g.k,g.v,depth,tap,isOpen);if(isOpen)html+=level(g.items,keys,path,depth+1,prefix);});
+    return html;}
+  var secKeys=[function(x){return x.h.se;},function(x){return x.h.br;},function(x){return x.h.te;}];
+  var landKeys=[function(x){return x.h.co;},function(x){return x.h.se;}];
+  var secRows=level(d,secKeys,ALLOC.sektor,0,"sektor");
+  var landRows=level(d,landKeys,ALLOC.land,0,"land");
   return '<div class="card"><div class="lbl">Koncentration</div><div class="row" style="margin-top:8px"><div class="kpi"><div class="faint" style="font-size:12px">St\u00f8rste</div><div class="mono" style="font-size:16px">'+fmt(top1,1)+' %</div></div><div class="kpi"><div class="faint" style="font-size:12px">Top 5</div><div class="mono" style="font-size:16px">'+fmt(top5,1)+' %</div></div></div></div>'+
-    '<div class="card"><div class="lbl">Sektor \u2192 branche \u2192 tema (tryk for at folde ud)</div>'+rows+'</div>'+
-    '<div class="card"><div class="lbl">Eksponering pr. land</div>'+landRows+'</div>';
+    '<div class="card"><div class="lbl">Sektor \u2192 branche \u2192 tema \u2192 papir (tryk for at folde ud)</div>'+secRows+'</div>'+
+    '<div class="card"><div class="lbl">Land \u2192 sektor \u2192 papir (tryk)</div>'+landRows+'</div>';
 }
 
 function setView(){
@@ -297,7 +303,10 @@ function bindMkt(){
   var d=document.getElementById("dir");if(d)d.onclick=function(){DIR=-DIR;render();};
   document.querySelectorAll(".li[data-y]").forEach(function(e){e.onclick=function(){openDetail(e.getAttribute("data-y"));};});
 }
-function bindAlloc(){document.querySelectorAll("[data-alloc]").forEach(function(e){e.onclick=function(){var v=e.getAttribute("data-alloc");if(v.indexOf("sec:")===0){var k=v.slice(4);ALLOC.sec=(ALLOC.sec===k?null:k);ALLOC.bra=null;}else if(v.indexOf("bra:")===0){var k=v.slice(4);ALLOC.bra=(ALLOC.bra===k?null:k);}render();};});}
+function bindAlloc(){
+  document.querySelectorAll("[data-alloc]").forEach(function(e){e.onclick=function(){var v=e.getAttribute("data-alloc"),parts=v.split("|"),prefix=parts[0],depth=parseInt(parts[1],10),key=parts.slice(2).join("|");var path=prefix==="sektor"?ALLOC.sektor:ALLOC.land;if(path[depth]===key){path.length=depth;}else{path.length=depth;path[depth]=key;}render();};});
+  document.querySelectorAll("[data-paper]").forEach(function(e){e.onclick=function(){openDetail(e.getAttribute("data-paper"));};});
+}
 function bindSet(){
   var ri=document.getElementById("reimport");if(ri)ri.onclick=function(){HOLD=null;render();};
   var c=document.getElementById("clear");if(c)c.onclick=function(){if(confirm("Ryd alle lokale data?")){[KEYS.hold,KEYS.port,KEYS.mkt,KEYS.fx].forEach(function(k){localStorage.removeItem(k);});HOLD=null;MKT={};FX={DKK:1};render();}};
