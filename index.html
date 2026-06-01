@@ -12,7 +12,7 @@
     --text:#e6edf3;--muted:#8b98a9;--faint:#5b6675;--green:#3fb950;--red:#f85149;--accent:#58a6ff;--amber:#d29922}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Schibsted Grotesk',-apple-system,system-ui,sans-serif;padding:0 0 90px}
-  .wrap{max-width:560px;margin:0 auto;padding:14px}
+  .wrap{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 14px 14px}
   .mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
   .row{display:flex;justify-content:space-between;align-items:baseline}
   .card{background:var(--panel);border:1px solid var(--bsoft);border-radius:14px;padding:14px;margin-top:12px}
@@ -40,7 +40,7 @@
   .sheet{background:var(--panel);border-top-left-radius:18px;border-top-right-radius:18px;border:1px solid var(--bsoft);width:100%;max-width:560px;margin:0 auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
   .pl{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
   .seg{display:flex;gap:14px}
-  .x{background:var(--bsoft);color:var(--text);border-radius:9px;padding:6px 11px;font-size:13px}
+  .x{background:var(--bsoft);color:var(--text);border-radius:9px;padding:9px 15px;font-size:14px}
   .err{background:#2a1416;border:1px solid var(--red);color:#ffb4ad;border-radius:8px;padding:8px 10px;font-size:12px;margin-top:8px}
   a{color:var(--accent)}
 </style>
@@ -63,6 +63,7 @@ var TAB="over",SORT="mv",DIR=-1,PROG=null,ALLOC={sec:null,bra:null};
 
 function lsGet(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 function fmt(n,d){if(n==null||isNaN(n))return "\u2013";return Number(n).toLocaleString("da-DK",{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d});}
 function kr(n){if(n==null||isNaN(n))return "\u2013";return Number(n).toLocaleString("da-DK",{maximumFractionDigits:0})+" kr";}
 function krS(n){if(n==null||isNaN(n))return "\u2013";return (n>0?"+":"")+Number(n).toLocaleString("da-DK",{maximumFractionDigits:0})+" kr";}
@@ -71,7 +72,7 @@ function col(n){return n>0?"var(--green)":n<0?"var(--red)":"var(--muted)";}
 
 /* ---------- data fetch ---------- */
 function chartUrl(sym){return "https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(sym)+"?range=1y&interval=1d";}
-async function viaRelay(u){var last="";for(var i=0;i<RELAYS.length;i++){try{var r=await fetch(RELAYS[i](u));if(!r.ok){last="HTTP "+r.status;continue;}var t=await r.text();return JSON.parse(t);}catch(e){last=(e&&e.message)||String(e);}}throw new Error(last||"relay fail");}
+async function viaRelay(u){var last="";for(var i=0;i<RELAYS.length;i++){try{var ctl=new AbortController();var to=setTimeout(function(){ctl.abort();},13000);var r=await fetch(RELAYS[i](u),{signal:ctl.signal});clearTimeout(to);if(!r.ok){last="HTTP "+r.status;continue;}var t=await r.text();return JSON.parse(t);}catch(e){last=(e&&e.message)||String(e);}}throw new Error(last||"relay fail");}
 function parseChart(j){
   var r=j&&j.chart&&j.chart.result&&j.chart.result[0];
   if(!r||!r.meta)return null;
@@ -95,21 +96,24 @@ async function pool(items, worker, conc, onprog){
   await Promise.all(runners);
 }
 
-async function refreshAll(force){
+async function refreshAll(force,missingOnly){
   if(!HOLD)return;
-  // currencies
   var curs={}; HOLD.forEach(function(h){if(h.c&&h.c!=="DKK")curs[h.c]=1;});
-  PROG={done:0,total:HOLD.length+Object.keys(curs).length,note:"Henter kurser\u2026"}; render();
-  // FX
-  for(var c in curs){ try{var m=await fetchSym(c+"DKK=X"); FX[c]=m.p;}catch(e){ if(FX[c]==null)FX[c]=FXFALL[c]||1; } PROG.done++; render(); }
-  FX.DKK=1; lsSet(KEYS.fx,FX);
-  // prices
+  PROG={done:0,total:1,note:"Henter valuta\u2026"}; render();
+  if(!missingOnly){
+    for(var c in curs){ try{var m=await fetchSym(c+"DKK=X"); if(m&&m.p)FX[c]=m.p;}catch(e){ if(FX[c]==null)FX[c]=FXFALL[c]||1; } }
+    FX.DKK=1; lsSet(KEYS.fx,FX);
+  }
   var stale=function(h){var m=MKT[h.y];return force||!m||!m.at||(Date.now()-m.at>15*60*1000);};
-  var todo=HOLD.filter(stale);
-  PROG.note="Henter kurser ("+ (HOLD.length-todo.length) +"/"+HOLD.length+" fra cache)\u2026";
-  await pool(todo, async function(h){ try{ MKT[h.y]=await fetchSym(h.y);}catch(e){ if(!MKT[h.y])MKT[h.y]={p:null,prev:null,cur:h.c,cl:[],at:Date.now(),fail:true}; } }, 4,
-    function(d,t){PROG.done=Object.keys(curs).length + (HOLD.length-todo.length) + d; render();});
-  lsSet(KEYS.mkt,MKT);
+  var todo = missingOnly ? HOLD.filter(function(h){var m=MKT[h.y];return !m||m.p==null;}) : HOLD.filter(stale);
+  var cached=HOLD.length-todo.length;
+  PROG={done:0,total:todo.length||1,note:"Henter kurser ("+cached+"/"+HOLD.length+" fra cache)\u2026"}; render();
+  await pool(todo, async function(h){
+    await sleep(120);
+    for(var a=0;a<3;a++){ try{ var r=await fetchSym(h.y); MKT[h.y]=r; return; }catch(e){ await sleep(500+a*1100); } }
+    if(!MKT[h.y]||MKT[h.y].p==null)MKT[h.y]={p:null,prev:null,cur:h.c,cl:[],at:Date.now(),fail:true};
+  }, 2, function(d,t){ PROG.done=d; PROG.total=t; render(); });
+  if(!lsSet(KEYS.mkt,MKT)){ var lite={}; for(var k in MKT){lite[k]={p:MKT[k].p,prev:MKT[k].prev,cur:MKT[k].cur,cl:[],at:MKT[k].at,fail:MKT[k].fail};} lsSet(KEYS.mkt,lite); }
   PROG=null; render();
 }
 
@@ -158,7 +162,8 @@ function header(){
   var ats=HOLD.map(function(h){return (MKT[h.y]||{}).at;}).filter(Boolean);
   if(ats.length){var t=new Date(Math.max.apply(null,ats));when="opdateret "+t.toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"});}
   var prog=PROG?('<div class="bar"><i style="width:'+Math.round(100*PROG.done/Math.max(PROG.total,1))+'%"></i></div><div class="faint" style="font-size:11px;margin-top:4px">'+PROG.note+" "+PROG.done+"/"+PROG.total+'</div>'):"";
-  return '<div class="row"><h1>Portef\u00f8lje</h1><div class="seg"><button class="x" id="refresh">Opdater</button></div></div>'+
+  var miss=HOLD.filter(function(h){var m=MKT[h.y];return !m||m.p==null;}).length;var missBtn=miss>0?'<button class="x" id="retrymiss" style="margin-right:8px;background:#3a2a12;color:#f0c674">Hent manglende ('+miss+')</button>':'';
+  return '<div class="row"><h1>Portef\u00f8lje</h1><div class="seg">'+missBtn+'<button class="x" id="refresh">Opdater</button></div></div>'+
     '<div class="faint mono" style="font-size:11px;margin-top:3px">Yahoo \u00b7 ~15 min forsinket \u00b7 '+when+'</div>'+prog;
 }
 function overView(){
@@ -285,6 +290,7 @@ function tabbar(){var T=[["over","Oversigt"],["mkt","Beholdninger"],["alloc","Al
   return T.map(function(t){return '<div class="tab'+(TAB===t[0]?" on":"")+'" data-tab="'+t[0]+'">'+t[1]+'</div>';}).join("");}
 function bindTabs(){var els=document.querySelectorAll(".tab");els.forEach(function(e){e.onclick=function(){TAB=e.getAttribute("data-tab");render();window.scrollTo(0,0);};});}
 function bindHeader(){var r=document.getElementById("refresh");if(r)r.onclick=function(){refreshAll(true);};
+  var rm=document.getElementById("retrymiss");if(rm)rm.onclick=function(){refreshAll(false,true);};
   document.querySelectorAll(".li[data-y]").forEach(function(e){e.onclick=function(){openDetail(e.getAttribute("data-y"));};});}
 function bindMkt(){
   document.querySelectorAll(".chip[data-sort]").forEach(function(e){e.onclick=function(){SORT=e.getAttribute("data-sort");render();};});
