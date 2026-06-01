@@ -4,94 +4,295 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Datatest</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Portef&oslash;lje</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-  :root{--bg:#0a0e14;--panel:#121821;--bsoft:#2a3441;--text:#e6edf3;--muted:#8b98a9;--faint:#5b6675;--green:#3fb950;--red:#f85149;--accent:#58a6ff}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:'Schibsted Grotesk',-apple-system,system-ui,sans-serif;padding:20px 16px 48px}
-  .wrap{max-width:480px;margin:0 auto}
+  :root{--bg:#0a0e14;--panel:#121821;--panel2:#0e141c;--border:#1f2937;--bsoft:#2a3441;
+    --text:#e6edf3;--muted:#8b98a9;--faint:#5b6675;--green:#3fb950;--red:#f85149;--accent:#58a6ff;--amber:#d29922}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Schibsted Grotesk',-apple-system,system-ui,sans-serif;padding:0 0 90px}
+  .wrap{max-width:560px;margin:0 auto;padding:14px}
   .mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
-  h1{font-size:17px;font-weight:600;margin:0 0 2px}
-  .sub{font-size:12px;color:var(--faint)}
-  .banner{margin:16px 0;padding:14px;border-radius:12px;font-size:14px;font-weight:500}
-  .ok{background:#0f2417;border:1px solid var(--green);color:#7ee787}
-  .bad{background:#2a1416;border:1px solid var(--red);color:#ffb4ad}
-  .wait{background:var(--panel);border:1px solid var(--bsoft);color:var(--muted)}
-  .row{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;border-bottom:1px solid #1f2937}
-  .row:last-child{border-bottom:none}
-  .nm{font-size:14px}
+  .row{display:flex;justify-content:space-between;align-items:baseline}
+  .card{background:var(--panel);border:1px solid var(--bsoft);border-radius:14px;padding:14px;margin-top:12px}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.4px}
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  h1{font-size:16px;font-weight:600;margin:0}
+  .big{font-family:'IBM Plex Mono',monospace;font-size:27px;font-weight:600}
+  .kpi{flex:1;min-width:0}
+  .kpi .v{font-family:'IBM Plex Mono',monospace;font-size:15px;margin-top:3px}
+  .li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+  .li:last-child{border-bottom:none}
   .tk{font-size:11px;color:var(--faint)}
-  .px{font-family:'IBM Plex Mono',monospace;font-size:16px}
-  .card{background:var(--panel);border:1px solid var(--bsoft);border-radius:12px;padding:6px 14px;margin-top:8px}
-  button{font-family:inherit;background:var(--accent);color:#04111f;border:none;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer}
-  .err{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#ffb4ad;word-break:break-word;margin-top:8px}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .btn{background:var(--accent);color:#04111f;border-radius:10px;padding:11px 14px;font-weight:600;font-size:14px}
+  .chip{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:18px;padding:5px 11px;font-size:12px;margin:0 6px 6px 0}
+  .chip.on{background:var(--bsoft);color:var(--text);border-color:var(--bsoft)}
+  textarea{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:'IBM Plex Mono',monospace;font-size:12px}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;background:#0c1219;border-top:1px solid var(--border);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:20}
+  .tab{flex:1;text-align:center;padding:8px 0;font-size:12px;color:var(--faint);border-radius:10px}
+  .tab.on{color:var(--text);background:var(--panel)}
+  .bar{height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px}
+  .bar > i{display:block;height:100%;background:var(--accent);width:0}
+  .overlay{position:fixed;inset:0;background:rgba(4,8,14,.86);z-index:40;display:flex;align-items:flex-end}
+  .sheet{background:var(--panel);border-top-left-radius:18px;border-top-right-radius:18px;border:1px solid var(--bsoft);width:100%;max-width:560px;margin:0 auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+  .pl{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .seg{display:flex;gap:14px}
+  .x{background:var(--bsoft);color:var(--text);border-radius:9px;padding:6px 11px;font-size:13px}
+  .err{background:#2a1416;border:1px solid var(--red);color:#ffb4ad;border-radius:8px;padding:8px 10px;font-size:12px;margin-top:8px}
+  a{color:var(--accent)}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Datatest &middot; live kurser</h1>
-  <div class="sub">Henter et par kurser fra Yahoo via rel&aelig;. Ingen af dine tal er i denne fil.</div>
-  <div id="banner" class="banner wait">Tester forbindelse&hellip;</div>
-  <div id="list" class="card"></div>
-  <div id="err"></div>
-  <button id="retry">Pr&oslash;v igen</button>
-</div>
+<div class="wrap" id="app"></div>
+<div class="tabbar" id="tabbar"></div>
+<div id="modal"></div>
+
 <script>
-const TESTS=[
-  {tk:"DNORD.CO",nm:"D/S Norden"},
-  {tk:"NOVO-B.CO",nm:"Novo Nordisk B"},
-  {tk:"AAPL",nm:"Apple"}
-];
-const RELAYS=[
-  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
-  u=>"https://corsproxy.io/?url="+encodeURIComponent(u)
-];
-async function viaRelay(yurl){
-  let lastErr="";
-  for(const make of RELAYS){
-    try{
-      const res=await fetch(make(yurl));
-      if(!res.ok){lastErr="HTTP "+res.status;continue;}
-      const txt=await res.text();
-      return JSON.parse(txt);
-    }catch(e){lastErr=e.message||String(e);}
-  }
-  throw new Error(lastErr||"alle rel\u00e6er fejlede");
+"use strict";
+var KEYS={hold:"pf_holdings",port:"pf_port",mkt:"pf_mkt",fx:"pf_fx"};
+var RELAYS=[function(u){return "https://api.allorigins.win/raw?url="+encodeURIComponent(u);},
+            function(u){return "https://corsproxy.io/?url="+encodeURIComponent(u);}];
+var FXFALL={DKK:1,USD:6.9,EUR:7.46,NOK:0.62,SEK:0.65,GBP:8.7,CAD:5.0};
+var HOLD=null,PORT={r:0,d:0},MKT={},FX={DKK:1};
+var TAB="over",SORT="mv",DIR=-1,PROG=null;
+
+function lsGet(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}}
+function fmt(n,d){if(n==null||isNaN(n))return "\u2013";return Number(n).toLocaleString("da-DK",{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d});}
+function kr(n){if(n==null||isNaN(n))return "\u2013";return Number(n).toLocaleString("da-DK",{maximumFractionDigits:0})+" kr";}
+function krS(n){if(n==null||isNaN(n))return "\u2013";return (n>0?"+":"")+Number(n).toLocaleString("da-DK",{maximumFractionDigits:0})+" kr";}
+function pct(n){if(n==null||isNaN(n))return "\u2013";return (n>0?"+":"")+fmt(n,2)+" %";}
+function col(n){return n>0?"var(--green)":n<0?"var(--red)":"var(--muted)";}
+
+/* ---------- data fetch ---------- */
+function chartUrl(sym){return "https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(sym)+"?range=1y&interval=1d";}
+async function viaRelay(u){var last="";for(var i=0;i<RELAYS.length;i++){try{var r=await fetch(RELAYS[i](u));if(!r.ok){last="HTTP "+r.status;continue;}var t=await r.text();return JSON.parse(t);}catch(e){last=(e&&e.message)||String(e);}}throw new Error(last||"relay fail");}
+function parseChart(j){
+  var r=j&&j.chart&&j.chart.result&&j.chart.result[0];
+  if(!r||!r.meta)return null;
+  var ts=r.timestamp||[];
+  var q=r.indicators&&r.indicators.quote&&r.indicators.quote[0]?r.indicators.quote[0].close:[];
+  var cl=[];
+  for(var i=0;i<ts.length;i++){if(q[i]!=null)cl.push([ts[i]*1000,q[i]]);}
+  var meta=r.meta;
+  var prev=meta.previousClose!=null?meta.previousClose:(meta.chartPreviousClose!=null?meta.chartPreviousClose:(cl.length>1?cl[cl.length-2][1]:null));
+  return {p:meta.regularMarketPrice!=null?meta.regularMarketPrice:(cl.length?cl[cl.length-1][1]:null),
+          prev:prev, cur:meta.currency||null, cl:cl, at:Date.now()};
 }
-async function quote(tk){
-  const yurl="https://query1.finance.yahoo.com/v8/finance/chart/"+tk+"?range=5d&interval=1d";
-  const j=await viaRelay(yurl);
-  const r=j&&j.chart&&j.chart.result&&j.chart.result[0];
-  if(!r||!r.meta) throw new Error("uventet svar for "+tk);
-  return {price:r.meta.regularMarketPrice, cur:r.meta.currency};
+async function fetchSym(sym){var j=await viaRelay(chartUrl(sym));var m=parseChart(j);if(!m||m.p==null)throw new Error("ingen kurs");return m;}
+
+async function pool(items, worker, conc, onprog){
+  var idx=0, done=0, total=items.length;
+  async function run(){ while(idx<items.length){ var i=idx++; try{await worker(items[i]);}catch(e){} done++; if(onprog)onprog(done,total);} }
+  var runners=[]; for(var k=0;k<Math.min(conc,total);k++)runners.push(run());
+  await Promise.all(runners);
 }
-async function run(){
-  const banner=document.getElementById("banner");
-  const list=document.getElementById("list");
-  const err=document.getElementById("err");
-  banner.className="banner wait";banner.textContent="Tester forbindelse\u2026";
-  list.innerHTML="";err.innerHTML="";
-  let okCount=0;
-  for(const t of TESTS){
-    const id="r_"+t.tk.replace(/[^A-Za-z]/g,"");
-    list.insertAdjacentHTML("beforeend",
-      '<div class="row"><div><div class="nm">'+t.nm+'</div><div class="tk mono">'+t.tk+'</div></div><div class="px" id="'+id+'">\u2026</div></div>');
-    try{
-      const q=await quote(t.tk);
-      okCount++;
-      document.getElementById(id).textContent=(q.price!=null?q.price.toLocaleString("da-DK",{maximumFractionDigits:2}):"\u2013")+" "+(q.cur||"");
-    }catch(e){
-      document.getElementById(id).textContent="fejl";
-      document.getElementById(id).style.color="var(--red)";
-      err.innerHTML+='<div class="err">'+t.tk+": "+(e.message||e)+'</div>';
-    }
-  }
-  if(okCount>0){banner.className="banner ok";banner.textContent="\u2713 Det virker! Hosting + live data er p\u00e5 plads ("+okCount+"/"+TESTS.length+" hentet).";}
-  else{banner.className="banner bad";banner.textContent="\u2717 Kunne ikke hente data. Send mig fejlteksten nedenfor, s\u00e5 finder vi et andet rel\u00e6.";}
+
+async function refreshAll(force){
+  if(!HOLD)return;
+  // currencies
+  var curs={}; HOLD.forEach(function(h){if(h.c&&h.c!=="DKK")curs[h.c]=1;});
+  PROG={done:0,total:HOLD.length+Object.keys(curs).length,note:"Henter kurser\u2026"}; render();
+  // FX
+  for(var c in curs){ try{var m=await fetchSym(c+"DKK=X"); FX[c]=m.p;}catch(e){ if(FX[c]==null)FX[c]=FXFALL[c]||1; } PROG.done++; render(); }
+  FX.DKK=1; lsSet(KEYS.fx,FX);
+  // prices
+  var stale=function(h){var m=MKT[h.y];return force||!m||!m.at||(Date.now()-m.at>15*60*1000);};
+  var todo=HOLD.filter(stale);
+  PROG.note="Henter kurser ("+ (HOLD.length-todo.length) +"/"+HOLD.length+" fra cache)\u2026";
+  await pool(todo, async function(h){ try{ MKT[h.y]=await fetchSym(h.y);}catch(e){ if(!MKT[h.y])MKT[h.y]={p:null,prev:null,cur:h.c,cl:[],at:Date.now(),fail:true}; } }, 4,
+    function(d,t){PROG.done=Object.keys(curs).length + (HOLD.length-todo.length) + d; render();});
+  lsSet(KEYS.mkt,MKT);
+  PROG=null; render();
 }
-document.getElementById("retry").onclick=run;
-run();
+
+/* ---------- compute ---------- */
+function fxOf(c){return c==="DKK"?1:(FX[c]||FXFALL[c]||1);}
+function periods(cl,price){
+  if(!cl||!cl.length||price==null)return null;
+  var now=cl[cl.length-1][0];
+  function back(days){var tgt=now-days*86400000;var pick=null;for(var i=0;i<cl.length;i++){if(cl[i][0]<=tgt)pick=cl[i];else break;}return pick;}
+  function ytd(){var d=new Date(now);var j=new Date(d.getFullYear(),0,1).getTime();var pick=null;for(var i=0;i<cl.length;i++){if(cl[i][0]<j)pick=cl[i];else break;}return pick;}
+  var defs=[["Dag",cl.length>1?cl[cl.length-2]:null],["Uge",back(7)],["2 uger",back(14)],["3 uger",back(21)],["M\u00e5ned",back(30)],["YTD",ytd()],["52 uger",back(365)]];
+  return defs.map(function(d){var r=d[1];return r?{label:d[0],pct:(price/r[1]-1)*100,ref:r[1]}:{label:d[0],pct:null,ref:null};});
+}
+function derive(h){
+  var m=MKT[h.y]||{}; var fx=fxOf(h.c);
+  var price=m.p; var prev=m.prev;
+  var has=price!=null;
+  var mvN=has?price*h.s:null, costN=h.a*h.s, gevN=has?(price-h.a)*h.s:null;
+  var per=has?periods(m.cl,price):null;
+  return {h:h, m:m, fx:fx, price:price, prev:prev, has:has,
+    mv:has?mvN*fx:null, cost:costN*fx, gev:has?gevN*fx:null,
+    gevpct:has?(price/h.a-1)*100:null,
+    dayKr:(has&&prev!=null)?(price-prev)*h.s*fx:null,
+    daypct:(has&&prev!=null)?(price/prev-1)*100:null,
+    per:per, div:h.d||0};
+}
+function deriveAll(){return HOLD.map(derive);}
+function periodPct(d,key){ if(!d.per)return null; var idx={day:0,week:1,w2:2,w3:3,month:4,ytd:5,y52:6}[key]; var p=d.per[idx]; return p?p.pct:null; }
+
+/* ---------- render ---------- */
+function render(){
+  var app=document.getElementById("app");
+  if(!HOLD){ app.innerHTML=importView(); bindImport(); document.getElementById("tabbar").innerHTML=""; return; }
+  document.getElementById("tabbar").innerHTML=tabbar();
+  bindTabs();
+  var html=header();
+  if(TAB==="over")html+=overView();
+  else if(TAB==="mkt")html+=mktView();
+  else if(TAB==="alloc")html+=allocView();
+  else if(TAB==="set")html+=setView();
+  app.innerHTML=html;
+  bindHeader(); if(TAB==="mkt")bindMkt(); if(TAB==="alloc")bindAlloc(); if(TAB==="set")bindSet();
+}
+function header(){
+  var when="";
+  var ats=HOLD.map(function(h){return (MKT[h.y]||{}).at;}).filter(Boolean);
+  if(ats.length){var t=new Date(Math.max.apply(null,ats));when="opdateret "+t.toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"});}
+  var prog=PROG?('<div class="bar"><i style="width:'+Math.round(100*PROG.done/Math.max(PROG.total,1))+'%"></i></div><div class="faint" style="font-size:11px;margin-top:4px">'+PROG.note+" "+PROG.done+"/"+PROG.total+'</div>'):"";
+  return '<div class="row"><h1>Portef\u00f8lje</h1><div class="seg"><button class="x" id="refresh">Opdater</button></div></div>'+
+    '<div class="faint mono" style="font-size:11px;margin-top:3px">Yahoo \u00b7 ~15 min forsinket \u00b7 '+when+'</div>'+prog;
+}
+function overView(){
+  var d=deriveAll();
+  var mv=0,cost=0,day=0,miss=0;
+  d.forEach(function(x){ if(x.has){mv+=x.mv;cost+=x.cost;if(x.dayKr!=null)day+=x.dayKr;} else miss++; });
+  var gev=mv-cost; var tjent=gev+(PORT.r||0)+(PORT.d||0);
+  var withDay=d.filter(function(x){return x.daypct!=null;});
+  var up=withDay.slice().sort(function(a,b){return b.daypct-a.daypct;}).slice(0,3);
+  var dn=withDay.slice().sort(function(a,b){return a.daypct-b.daypct;}).slice(0,3);
+  function mvLine(x){return '<div class="li" data-y="'+x.h.y+'"><div><div>'+x.h.n+'</div><div class="tk mono">'+x.h.y+'</div></div><div class="mono" style="color:'+col(x.daypct)+'">'+pct(x.daypct)+'</div></div>';}
+  var missNote=miss?('<div class="err">'+miss+' papir(er) mangler kurs \u2013 se Beholdninger.</div>'):"";
+  return '<div class="card"><div class="lbl">Samlet v\u00e6rdi (DKK)</div><div class="big">'+kr(mv)+'</div>'+
+    '<div style="margin-top:6px;color:'+col(day)+'" class="mono">'+krS(day)+' i dag</div>'+
+    '<div class="row" style="margin-top:14px;gap:10px">'+
+      kpi("Urealiseret",krS(gev),col(gev))+kpi("Realiseret",krS(PORT.r),col(PORT.r))+kpi("Udbytte",kr(PORT.d),"var(--text)")+
+    '</div>'+
+    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><span class="lbl">Samlet tjent (al tid)</span><div class="mono" style="font-size:19px;font-weight:700;color:'+col(tjent)+'">'+krS(tjent)+'</div></div>'+
+    missNote+'</div>'+
+    '<div class="card"><div class="lbl">Dagens vindere</div>'+up.map(mvLine).join("")+'</div>'+
+    '<div class="card"><div class="lbl">Dagens tabere</div>'+dn.map(mvLine).join("")+'</div>';
+}
+function kpi(l,v,c){return '<div class="kpi"><div class="lbl">'+l+'</div><div class="v" style="color:'+(c||"var(--text)")+'">'+v+'</div></div>';}
+
+var SORTS=[["mv","V\u00e6rdi"],["gevpct","Afkast"],["day","Dag"],["week","Uge"],["month","M\u00e5ned"],["ytd","YTD"],["y52","52u"],["name","Navn"]];
+function mktView(){
+  var d=deriveAll();
+  function metric(x){ if(SORT==="mv")return x.mv||-1e18; if(SORT==="gevpct")return x.gevpct==null?-1e18:x.gevpct; if(SORT==="name")return x.h.n.toLowerCase();
+    var p=periodPct(x,SORT); return p==null?-1e18:p; }
+  d.sort(function(a,b){var ma=metric(a),mb=metric(b);
+    if(typeof ma==="string"){return DIR===-1?ma.localeCompare(mb):mb.localeCompare(ma);}
+    return DIR===-1?(mb-ma):(ma-mb);});
+  var chips=SORTS.map(function(s){return '<button class="chip'+(SORT===s[0]?" on":"")+'" data-sort="'+s[0]+'">'+s[1]+'</button>';}).join("")+
+    '<button class="chip" id="dir">'+(DIR===-1?"St\u00f8rst \u2193":"Mindst \u2191")+'</button>';
+  var rows=d.map(function(x){
+    var right;
+    if(SORT==="mv")right='<div class="mono">'+kr(x.mv)+'</div><div class="mono" style="font-size:11.5px;color:'+col(x.gev)+'">'+krS(x.gev)+'</div>';
+    else if(SORT==="gevpct")right='<div class="mono" style="color:'+col(x.gevpct)+'">'+pct(x.gevpct)+'</div><div class="mono" style="font-size:11.5px;color:'+col(x.gev)+'">'+krS(x.gev)+'</div>';
+    else { var p=periodPct(x,SORT); right='<div class="mono" style="color:'+col(p)+'">'+pct(p)+'</div><div class="mono" style="font-size:11.5px;color:'+col(x.daypct)+'">dag '+pct(x.daypct)+'</div>';}
+    var px=x.has?(fmt(x.price,2)+" "+(x.h.c||"")):'<span style="color:var(--amber)">kurs?</span>';
+    return '<div class="li" data-y="'+x.h.y+'"><div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw">'+x.h.n+'</div><div class="tk mono">'+x.h.y+' \u00b7 '+px+'</div></div><div style="text-align:right">'+right+'</div></div>';
+  }).join("");
+  return '<div class="card"><div style="display:flex;flex-wrap:wrap">'+chips+'</div></div><div class="card">'+rows+'</div>';
+}
+
+function allocView(){
+  var d=deriveAll().filter(function(x){return x.has;});
+  var tot=d.reduce(function(s,x){return s+x.mv;},0)||1;
+  function group(keyfn){var g={};d.forEach(function(x){var k=keyfn(x)||"\u2013";g[k]=(g[k]||0)+x.mv;});return Object.keys(g).map(function(k){return {k:k,v:g[k]};}).sort(function(a,b){return b.v-a.v;});}
+  function bars(arr){return arr.map(function(r){var w=Math.round(100*r.v/tot);return '<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div class="row"><div>'+r.k+'</div><div class="mono">'+fmt(100*r.v/tot,1)+' %</div></div><div class="bar" style="margin-top:5px"><i style="width:'+w+'%"></i></div><div class="faint mono" style="font-size:11px;margin-top:3px">'+kr(r.v)+'</div></div>';}).join("");}
+  var bySec=group(function(x){return x.h.se;});
+  var byCo=group(function(x){return x.h.co;});
+  var sorted=d.slice().sort(function(a,b){return b.mv-a.mv;});
+  var top1=100*sorted[0].mv/tot, top5=100*sorted.slice(0,5).reduce(function(s,x){return s+x.mv;},0)/tot;
+  return '<div class="card"><div class="lbl">Koncentration</div><div class="row" style="margin-top:8px"><div class="kpi"><div class="faint" style="font-size:12px">St\u00f8rste position</div><div class="mono" style="font-size:16px">'+fmt(top1,1)+' %</div></div><div class="kpi"><div class="faint" style="font-size:12px">Top 5</div><div class="mono" style="font-size:16px">'+fmt(top5,1)+' %</div></div></div></div>'+
+    '<div class="card"><div class="lbl">Eksponering pr. sektor</div>'+bars(bySec)+'</div>'+
+    '<div class="card"><div class="lbl">Eksponering pr. land</div>'+bars(byCo)+'</div>';
+}
+
+function setView(){
+  return '<div class="card"><div class="lbl">Indstillinger</div>'+
+    '<div style="margin-top:10px"><button class="x" id="reimport">Skift / opdater holdings-data</button></div>'+
+    '<div style="margin-top:10px"><button class="x" id="clear">Ryd alt lokalt</button></div>'+
+    '<div class="faint" style="font-size:12px;margin-top:12px">Dine holdings ligger kun i denne browser. Realiseret + udbytte (al tid) er gemt fra din Saxo-rapport. Periodeafkast og kurser er fra Yahoo, ~15 min forsinket.</div></div>';
+}
+
+/* ---------- detail sheet ---------- */
+function openDetail(y){
+  var h=null;for(var i=0;i<HOLD.length;i++)if(HOLD[i].y===y)h=HOLD[i];
+  if(!h)return; var x=derive(h);
+  var spark=sparkSvg((x.m.cl||[]).slice(-120).map(function(p){return p[1];}));
+  var perRows=(x.per||[]).map(function(p){return '<div class="pl"><div class="muted">'+p.label+'</div><div class="mono" style="color:'+col(p.pct)+'">'+pct(p.pct)+'</div></div>';}).join("");
+  var tjentPapir=(x.gev!=null?x.gev:0)+(x.div||0);
+  var html='<div class="overlay" id="ov"><div class="sheet">'+
+    '<div class="row"><div><div style="font-size:17px;font-weight:600">'+h.n+'</div><div class="tk mono">'+h.y+' \u00b7 '+h.se+(h.br?" / "+h.br:"")+(h.te?" / "+h.te:"")+'</div></div><button class="x" id="close">Luk</button></div>'+
+    '<div class="row" style="margin-top:10px;align-items:flex-end"><div><div class="lbl">Kurs</div><div class="mono" style="font-size:22px;font-weight:600">'+(x.has?fmt(x.price,2):"\u2013")+' '+(h.c||"")+'</div></div><div style="text-align:right"><div class="mono" style="color:'+col(x.daypct)+'">'+pct(x.daypct)+' i dag</div></div></div>'+
+    spark+
+    '<div style="margin-top:10px">'+perRows+'</div>'+
+    '<div class="card" style="margin-top:12px">'+
+      '<div class="pl"><div class="muted">Antal \u00b7 GAK</div><div class="mono">'+fmt(h.s,0)+' stk \u00b7 '+fmt(h.a,2)+' '+h.c+'</div></div>'+
+      '<div class="pl"><div class="muted">Markedsv\u00e6rdi</div><div class="mono">'+kr(x.mv)+'</div></div>'+
+      '<div class="pl"><div class="muted">Urealiseret</div><div class="mono" style="color:'+col(x.gev)+'">'+krS(x.gev)+' ('+pct(x.gevpct)+')</div></div>'+
+      '<div class="pl"><div class="muted">Udbytte modtaget</div><div class="mono">'+kr(x.div)+'</div></div>'+
+      '<div class="pl" style="border-bottom:none"><div class="muted">Tjent p\u00e5 papiret</div><div class="mono" style="color:'+col(tjentPapir)+'">'+krS(tjentPapir)+'</div></div>'+
+    '</div>'+
+    (x.has?"":'<div class="err">Kursen kunne ikke hentes for '+h.y+'. Symbolet passer m\u00e5ske ikke til Yahoo \u2013 send mig navnet, s\u00e5 retter jeg det.</div>')+
+    '</div></div>';
+  document.getElementById("modal").innerHTML=html;
+  document.getElementById("close").onclick=closeDetail;
+  document.getElementById("ov").onclick=function(e){if(e.target.id==="ov")closeDetail();};
+}
+function closeDetail(){document.getElementById("modal").innerHTML="";}
+function sparkSvg(data){
+  if(!data||data.length<2)return "";
+  var w=520,h=54,mn=Math.min.apply(null,data),mx=Math.max.apply(null,data),rng=(mx-mn)||1,pts=[];
+  for(var i=0;i<data.length;i++)pts.push((i/(data.length-1)*w).toFixed(1)+","+(h-(data[i]-mn)/rng*(h-8)-4).toFixed(1));
+  var up=data[data.length-1]>=data[0];
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" style="width:100%;height:54px;margin-top:12px"><polyline points="'+pts.join(" ")+'" fill="none" stroke="'+(up?"var(--green)":"var(--red)")+'" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
+}
+
+/* ---------- import ---------- */
+function importView(){
+  return '<h1>Portef\u00f8lje</h1><div class="card"><div class="lbl">Importer dine holdings</div>'+
+    '<div class="faint" style="font-size:12.5px;margin:8px 0">Inds\u00e6t teksten du fik i chatten. Den gemmes kun her i din browser \u2013 ikke i repoet.</div>'+
+    '<textarea id="imp" rows="5" placeholder="Inds\u00e6t holdings-data her\u2026"></textarea>'+
+    '<button class="btn" id="doimp" style="margin-top:10px;width:100%">Importer</button><div id="imperr"></div></div>';
+}
+function bindImport(){
+  document.getElementById("doimp").onclick=function(){
+    var t=document.getElementById("imp").value.trim();
+    try{var o=JSON.parse(t); if(!o.h||!o.h.length)throw new Error("ingen holdings");
+      HOLD=o.h; PORT=o.p||{r:0,d:0}; lsSet(KEYS.hold,HOLD); lsSet(KEYS.port,PORT);
+      render(); refreshAll(true);
+    }catch(e){document.getElementById("imperr").innerHTML='<div class="err">Kunne ikke l\u00e6se data: '+((e&&e.message)||e)+'</div>';}
+  };
+}
+/* ---------- binds ---------- */
+function tabbar(){var T=[["over","Oversigt"],["mkt","Beholdninger"],["alloc","Allokering"],["set","Mere"]];
+  return T.map(function(t){return '<div class="tab'+(TAB===t[0]?" on":"")+'" data-tab="'+t[0]+'">'+t[1]+'</div>';}).join("");}
+function bindTabs(){var els=document.querySelectorAll(".tab");els.forEach(function(e){e.onclick=function(){TAB=e.getAttribute("data-tab");render();window.scrollTo(0,0);};});}
+function bindHeader(){var r=document.getElementById("refresh");if(r)r.onclick=function(){refreshAll(true);};
+  document.querySelectorAll(".li[data-y]").forEach(function(e){e.onclick=function(){openDetail(e.getAttribute("data-y"));};});}
+function bindMkt(){
+  document.querySelectorAll(".chip[data-sort]").forEach(function(e){e.onclick=function(){SORT=e.getAttribute("data-sort");render();};});
+  var d=document.getElementById("dir");if(d)d.onclick=function(){DIR=-DIR;render();};
+  document.querySelectorAll(".li[data-y]").forEach(function(e){e.onclick=function(){openDetail(e.getAttribute("data-y"));};});
+}
+function bindAlloc(){}
+function bindSet(){
+  var ri=document.getElementById("reimport");if(ri)ri.onclick=function(){HOLD=null;render();};
+  var c=document.getElementById("clear");if(c)c.onclick=function(){if(confirm("Ryd alle lokale data?")){[KEYS.hold,KEYS.port,KEYS.mkt,KEYS.fx].forEach(function(k){localStorage.removeItem(k);});HOLD=null;MKT={};FX={DKK:1};render();}};
+}
+
+/* ---------- init ---------- */
+(function init(){
+  HOLD=lsGet(KEYS.hold); PORT=lsGet(KEYS.port)||{r:0,d:0}; MKT=lsGet(KEYS.mkt)||{}; FX=lsGet(KEYS.fx)||{DKK:1};
+  render();
+  if(HOLD){ refreshAll(false); }
+})();
 </script>
 </body>
 </html>
