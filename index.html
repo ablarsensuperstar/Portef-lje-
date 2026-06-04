@@ -144,7 +144,7 @@ function derive(h){
 function deriveAll(){return HOLD.map(derive);}
 function periodPct(d,key){ if(!d.per)return null; for(var i=0;i<d.per.length;i++){if(d.per[i].key===key)return d.per[i].pct;} return null; }
 function posTjent(x){return x.has?((x.gev||0)+(x.div||0)):null;}
-function tjentLine(x){var t=posTjent(x);if(t==null)return '<div class="faint mono" style="font-size:11px">\u2013</div>';return '<div class="mono" style="font-size:11px;color:'+col(t)+'">'+krS(t)+' inkl. udb.</div>';}
+function tjentLine(x){var t=posTjent(x);if(t==null)return '<div class="faint mono" style="font-size:11px">\u2013</div>';return '<div class="mono" style="font-size:11px;color:'+col(t)+'">'+krS(t)+' inkl. udb.</div><div class="faint mono" style="font-size:10.5px">udb. '+kr(x.div||0)+'</div>';}
 
 /* ---------- render ---------- */
 function render(){
