@@ -143,6 +143,8 @@ function derive(h){
 }
 function deriveAll(){return HOLD.map(derive);}
 function periodPct(d,key){ if(!d.per)return null; for(var i=0;i<d.per.length;i++){if(d.per[i].key===key)return d.per[i].pct;} return null; }
+function posTjent(x){return x.has?((x.gev||0)+(x.div||0)):null;}
+function tjentLine(x){var t=posTjent(x);if(t==null)return '<div class="faint mono" style="font-size:11px">\u2013</div>';return '<div class="mono" style="font-size:11px;color:'+col(t)+'">'+krS(t)+' inkl. udb.</div>';}
 
 /* ---------- render ---------- */
 function render(){
@@ -175,7 +177,7 @@ function overView(){
   var withDay=d.filter(function(x){return x.daypct!=null&&Math.abs(x.daypct)<50;});
   var up=withDay.slice().sort(function(a,b){return b.daypct-a.daypct;}).slice(0,3);
   var dn=withDay.slice().sort(function(a,b){return a.daypct-b.daypct;}).slice(0,3);
-  function mvLine(x){return '<div class="li" data-y="'+x.h.y+'"><div><div>'+nm(x.h)+'</div><div class="tk mono">'+x.h.y+'</div></div><div class="mono" style="color:'+col(x.daypct)+'">'+pct(x.daypct)+'</div></div>';}
+  function mvLine(x){return '<div class="li" data-y="'+x.h.y+'"><div><div>'+nm(x.h)+'</div><div class="tk mono">'+x.h.y+'</div></div><div style="text-align:right"><div class="mono" style="color:'+col(x.daypct)+'">'+pct(x.daypct)+'</div>'+tjentLine(x)+'</div></div>';}
   var missNote=miss?('<div class="err">'+miss+' papir(er) mangler kurs \u2013 se Beholdninger.</div>'):"";
   return '<div class="card"><div class="lbl">Samlet v\u00e6rdi (DKK)</div><div class="big">'+kr(mv)+'</div>'+
     '<div style="margin-top:6px;color:'+col(day)+'" class="mono">'+krS(day)+' i dag</div>'+
@@ -205,7 +207,7 @@ function mktView(){
     else if(SORT==="gevpct")right='<div class="mono" style="color:'+col(x.gevpct)+'">'+pct(x.gevpct)+'</div><div class="mono" style="font-size:11.5px;color:'+col(x.gev)+'">'+krS(x.gev)+'</div>';
     else { var p=periodPct(x,SORT); right='<div class="mono" style="color:'+col(p)+'">'+pct(p)+'</div><div class="mono" style="font-size:11.5px;color:'+col(x.daypct)+'">dag '+pct(x.daypct)+'</div>';}
     var px=x.has?(fmt(x.price,2)+" "+(x.h.c||"")):'<span style="color:var(--amber)">kurs?</span>';
-    return '<div class="li" data-y="'+x.h.y+'"><div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw">'+nm(x.h)+'</div><div class="tk mono">'+x.h.y+' \u00b7 '+px+'</div></div><div style="text-align:right">'+right+'</div></div>';
+    return '<div class="li" data-y="'+x.h.y+'"><div style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw">'+nm(x.h)+'</div><div class="tk mono">'+x.h.y+' \u00b7 '+px+'</div></div><div style="text-align:right">'+right+tjentLine(x)+'</div></div>';
   }).join("");
   return '<div class="card"><div style="display:flex;flex-wrap:wrap">'+chips+'</div></div><div class="card">'+rows+'</div>';
 }
@@ -220,7 +222,7 @@ function allocView(){
   function bar(label,v,depth,tap,open){var w=Math.round(100*v/tot),pad=depth*14,arrow=open?"\u2212 ":"+ ";
     return '<div class="li2" data-alloc="'+tap+'" style="padding-left:'+pad+'px"><div class="row"><div style="font-size:13.5px">'+arrow+label+'</div><div class="mono" style="font-size:13px">'+fmt(100*v/tot,1)+' %</div></div><div class="bar" style="margin-top:5px"><i style="width:'+w+'%"></i></div><div class="faint mono" style="font-size:11px;margin-top:2px">'+kr(v)+'</div></div>';}
   function paperRow(x,depth){var pad=depth*14;
-    return '<div class="li2" data-paper="'+x.h.y+'" style="padding-left:'+pad+'px"><div class="row"><div style="min-width:0"><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50vw">\u2022 '+nm(x.h)+'</div><div class="tk mono">'+x.h.y+'</div></div><div style="text-align:right"><div class="mono" style="font-size:13px">'+fmt(100*x.mv/tot,1)+' %</div><div class="faint mono" style="font-size:11px">'+kr(x.mv)+'</div></div></div></div>';}
+    return '<div class="li2" data-paper="'+x.h.y+'" style="padding-left:'+pad+'px"><div class="row"><div style="min-width:0"><div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50vw">\u2022 '+nm(x.h)+'</div><div class="tk mono">'+x.h.y+'</div></div><div style="text-align:right"><div class="mono" style="font-size:13px">'+fmt(100*x.mv/tot,1)+' %</div><div class="faint mono" style="font-size:11px">'+kr(x.mv)+'</div>'+tjentLine(x)+'</div></div></div>';}
   function level(items,keys,path,depth,prefix){var html="";
     if(depth>=keys.length){items.slice().sort(function(a,b){return b.mv-a.mv;}).forEach(function(x){html+=paperRow(x,depth);});return html;}
     grp(items,keys[depth]).forEach(function(g){var isOpen=path[depth]===g.k,tap=prefix+"|"+depth+"|"+g.k;html+=bar(g.k,g.v,depth,tap,isOpen);if(isOpen)html+=level(g.items,keys,path,depth+1,prefix);});
