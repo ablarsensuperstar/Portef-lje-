@@ -143,6 +143,14 @@ function derive(h){
 }
 function deriveAll(){return HOLD.map(derive);}
 function periodPct(d,key){ if(!d.per)return null; for(var i=0;i<d.per.length;i++){if(d.per[i].key===key)return d.per[i].pct;} return null; }
+function portfolioPeriods(){
+  var d=deriveAll();
+  var defs=[["day","I dag"],["week","Uge"],["w2","2 uger"],["w3","3 uger"],["month","1 md"],["w6","6 uger"],["m2","2 mdr"],["m6","\u00bd \u00e5r"],["y52","1 \u00e5r"],["ytd","\u00c5r til dato"]];
+  var res=defs.map(function(p){return {key:p[0],label:p[1],now:0,then:0,n:0};});
+  d.forEach(function(x){ if(!x.has||!x.per)return; var fx=x.fx,sh=x.h.s,price=x.price;
+    x.per.forEach(function(pp){ if(pp.ref==null)return; for(var i=0;i<res.length;i++){ if(res[i].key===pp.key){res[i].now+=price*sh*fx;res[i].then+=pp.ref*sh*fx;res[i].n++;break;} } }); });
+  return res.map(function(r){var k=r.now-r.then;return {label:r.label,key:r.key,kr:k,pct:r.then>0?(k/r.then*100):null,n:r.n};});
+}
 function posTjent(x){return x.has?((x.gev||0)+(x.div||0)):null;}
 function tjentLine(x){var t=posTjent(x);if(t==null)return '<div class="faint mono" style="font-size:11px">\u2013</div>';return '<div class="mono" style="font-size:11px;color:'+col(t)+'">'+krS(t)+' inkl. udb.</div><div class="faint mono" style="font-size:10.5px">udb. '+kr(x.div||0)+'</div>';}
 
@@ -171,6 +179,8 @@ function header(){
 }
 function overView(){
   var d=deriveAll();
+  var pp=portfolioPeriods();
+  var periodCard='<div class="card"><div class="lbl">Afkast pr. periode \u2013 hele portef\u00f8ljen</div>'+pp.map(function(r){return '<div class="li2" style="padding:7px 0"><div class="row"><div style="font-size:13.5px">'+r.label+'</div><div style="text-align:right"><div class="mono" style="font-size:13.5px;color:'+col(r.pct)+'">'+pct(r.pct)+'</div><div class="faint mono" style="font-size:11px;color:'+col(r.kr)+'">'+krS(r.kr)+'</div></div></div></div>';}).join("")+'</div>';
   var mv=0,cost=0,day=0,miss=0;
   d.forEach(function(x){ if(x.has){mv+=x.mv;cost+=x.cost;if(x.dayKr!=null)day+=x.dayKr;} else miss++; });
   var gev=mv-cost; var tjent=gev+(PORT.r||0)+(PORT.d||0);
@@ -185,7 +195,7 @@ function overView(){
       kpi("Urealiseret",krS(gev),col(gev))+kpi("Realiseret",krS(PORT.r),col(PORT.r))+kpi("Udbytte",kr(PORT.d),"var(--text)")+
     '</div>'+
     '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><span class="lbl">Samlet tjent (al tid)</span><div class="mono" style="font-size:19px;font-weight:700;color:'+col(tjent)+'">'+krS(tjent)+'</div></div>'+
-    missNote+'</div>'+
+    missNote+'</div>'+periodCard+
     '<div class="card"><div class="lbl">Dagens vindere</div>'+up.map(mvLine).join("")+'</div>'+
     '<div class="card"><div class="lbl">Dagens tabere</div>'+dn.map(mvLine).join("")+'</div>';
 }
