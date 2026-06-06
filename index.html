@@ -149,15 +149,26 @@ function portfolioPeriods(){
   var defs=[["day","I dag",1],["week","Uge",7],["w2","2 uger",14],["w3","3 uger",21],["month","1 md",30],["w6","6 uger",42],["m2","2 mdr",60],["m6","\u00bd \u00e5r",182],["y52","1 \u00e5r",365],["ytd","\u00c5r til dato",null]];
   var nowMs=Date.now();
   function startMs(key,days){ if(key==="ytd")return new Date(new Date().getFullYear(),0,1).getTime(); return nowMs-days*86400000; }
-  var res=defs.map(function(p){return {key:p[0],label:p[1],start:startMs(p[0],p[2]),now:0,then:0};});
-  d.forEach(function(x){ if(!x.has||!x.per)return; var sh=x.h.s,price=x.price,c=x.h.c,fxn=fxOf(c);
-    x.per.forEach(function(pp){ if(pp.ref==null)return; for(var i=0;i<res.length;i++){ if(res[i].key===pp.key){res[i].now+=price*sh*fxn;res[i].then+=pp.ref*sh*fxAt(c,pp.refts);break;} } }); });
+  var res=defs.map(function(p){return {key:p[0],label:p[1],start:startMs(p[0],p[2]),gain:0,base:0};});
+  d.forEach(function(x){ if(!x.has||!x.per)return; var sh=x.h.s,price=x.price,c=x.h.c,fxn=fxOf(c),lots=x.h.lots;
+    x.per.forEach(function(pp){ if(pp.ref==null)return; var i,k,L,fb,cap,w,oldq,S,fxS;
+      for(i=0;i<res.length;i++){ if(res[i].key!==pp.key)continue; S=res[i].start; fxS=fxAt(c,pp.refts);
+        if(lots&&lots.length){ oldq=0;
+          for(k=0;k<lots.length;k++){ L=lots[k];
+            if(L[0]<=S){ oldq+=L[1]; }
+            else { fb=fxAt(c,L[0]); cap=L[1]*L[2]*fb; w=(nowMs-L[0])/(nowMs-S); if(w<0)w=0; if(w>1)w=1;
+                   res[i].gain+=L[1]*price*fxn-cap; res[i].base+=cap*w; } }
+          res[i].gain+=oldq*(price*fxn-pp.ref*fxS); res[i].base+=oldq*pp.ref*fxS;
+        } else { res[i].gain+=sh*(price*fxn-pp.ref*fxS); res[i].base+=sh*pp.ref*fxS; }
+        break; }
+    });
+  });
   var rev=(PORT.realEv||[]),dv=(PORT.divEv||[]);
   return res.map(function(r){var realK=0,divK=0,i;
     for(i=0;i<rev.length;i++)if(rev[i][0]>=r.start)realK+=rev[i][1];
     for(i=0;i<dv.length;i++)if(dv[i][0]>=r.start)divK+=dv[i][1];
-    var k=(r.now-r.then)+realK+divK;
-    return {label:r.label,key:r.key,kr:k,pct:r.then>0?(k/r.then*100):null};});
+    var k=r.gain+realK+divK;
+    return {label:r.label,key:r.key,kr:k,pct:r.base>0?(k/r.base*100):null};});
 }
 function posTjent(x){return x.has?((x.gev||0)+(x.div||0)):null;}
 function tjentLine(x){var t=posTjent(x);if(t==null)return '<div class="faint mono" style="font-size:11px">\u2013</div>';return '<div class="mono" style="font-size:11px;color:'+col(t)+'">'+krS(t)+' inkl. udb.</div><div class="faint mono" style="font-size:10.5px">udb. '+kr(x.div||0)+'</div>';}
