@@ -52,14 +52,14 @@
 
 <script>
 "use strict";
-var KEYS={hold:"pf_holdings",port:"pf_port",mkt:"pf_mkt",fx:"pf_fx"};
+var KEYS={hold:"pf_holdings",port:"pf_port",mkt:"pf_mkt",fx:"pf_fx",fxh:"pf_fxh"};
 var RELAYS=[function(u){return "https://api.allorigins.win/raw?url="+encodeURIComponent(u);},
             function(u){return "https://corsproxy.io/?url="+encodeURIComponent(u);}];
 var FXFALL={DKK:1,USD:6.9,EUR:7.46,NOK:0.62,SEK:0.65,GBP:8.7,CAD:5.0};
 var NAMEFIX={"NAT":"Nordic American Tankers","TNK":"Teekay Tankers","MRVL":"Marvell Technology","COST":"Costco Wholesale","ZEAL.CO":"Zealand Pharma","KOG.OL":"Kongsberg Gruppen","STNG":"Scorpio Tankers","IPCO.ST":"International Petroleum","GN.CO":"GN Store Nord","INSW":"International Seaways","AEHR":"Aehr Test Systems","INRG.MI":"iShares Clean Energy ETF","COIN":"Coinbase Global","RIOT":"Riot Platforms","LHX":"L3Harris Technologies","RGTI":"Rigetti Computing","ETOR":"eToro Group","HAUTO.OL":"H\u00f6egh Autoliners","UAMY":"United States Antimony","MP":"MP Materials","GLXY":"Galaxy Digital","MIR":"Mirion Technologies","SOFI":"SoFi Technologies","LAC-NEW.TO":"Lithium Americas","LEU":"Centrus Energy","AREC":"American Resources"};
 function nm(h){if(NAMEFIX[h.y])return NAMEFIX[h.y];if(h.n&&h.n.indexOf("Instrument")<0&&h.n.trim().length>2)return h.n;return (h.y||"").split(".")[0];}
 var SYMFIX={"TEN-NEW":"TEN","HAFNIA.OL":"HAFNI.OL","LAC-NEW.TO":"LAC.TO"};
-var HOLD=null,PORT={r:0,d:0},MKT={},FX={DKK:1};
+var HOLD=null,PORT={r:0,d:0},MKT={},FX={DKK:1},FXH={};
 var TAB="over",SORT="mv",DIR=-1,PROG=null,ALLOC={sektor:[],land:[]};
 
 function lsGet(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
@@ -102,8 +102,8 @@ async function refreshAll(force,missingOnly){
   var curs={}; HOLD.forEach(function(h){if(h.c&&h.c!=="DKK")curs[h.c]=1;});
   PROG={done:0,total:1,note:"Henter valuta\u2026"}; render();
   if(!missingOnly){
-    for(var c in curs){ try{var m=await fetchSym(c+"DKK=X"); if(m&&m.p)FX[c]=m.p;}catch(e){ if(FX[c]==null)FX[c]=FXFALL[c]||1; } }
-    FX.DKK=1; lsSet(KEYS.fx,FX);
+    for(var c in curs){ try{var m=await fetchSym(c+"DKK=X"); if(m&&m.p){FX[c]=m.p; if(m.cl&&m.cl.length)FXH[c]=m.cl;} }catch(e){ if(FX[c]==null)FX[c]=FXFALL[c]||1; } }
+    FX.DKK=1; lsSet(KEYS.fx,FX); try{lsSet(KEYS.fxh,FXH);}catch(e){}
   }
   var stale=function(h){var m=MKT[h.y];return force||!m||!m.at||(Date.now()-m.at>15*60*1000);};
   var todo = missingOnly ? HOLD.filter(function(h){var m=MKT[h.y];return !m||m.p==null;}) : HOLD.filter(stale);
@@ -120,13 +120,14 @@ async function refreshAll(force,missingOnly){
 
 /* ---------- compute ---------- */
 function fxOf(c){return c==="DKK"?1:(FX[c]||FXFALL[c]||1);}
+function fxAt(c,ts){if(c==="DKK")return 1;var h=FXH[c];if(h&&h.length){var r=null;for(var i=0;i<h.length;i++){if(h[i][0]<=ts)r=h[i][1];else break;}if(r!=null)return r;}return fxOf(c);}
 function periods(cl,price){
   if(!cl||!cl.length||price==null)return null;
   var now=cl[cl.length-1][0];
   function back(days){var tgt=now-days*86400000;var pick=null;for(var i=0;i<cl.length;i++){if(cl[i][0]<=tgt)pick=cl[i];else break;}return pick;}
   function ytd(){var d=new Date(now);var j=new Date(d.getFullYear(),0,1).getTime();var pick=null;for(var i=0;i<cl.length;i++){if(cl[i][0]<j)pick=cl[i];else break;}return pick;}
   var defs=[["Dag","day",cl.length>1?cl[cl.length-2]:null],["Uge","week",back(7)],["2 uger","w2",back(14)],["3 uger","w3",back(21)],["M\u00e5ned","month",back(30)],["6 uger","w6",back(42)],["2 mdr","m2",back(60)],["2,5 mdr","m25",back(75)],["3 mdr","m3",back(90)],["6 mdr","m6",back(180)],["YTD","ytd",ytd()],["52 uger","y52",back(365)]];
-  return defs.map(function(d){var r=d[2];return r?{label:d[0],key:d[1],pct:(price/r[1]-1)*100,ref:r[1]}:{label:d[0],key:d[1],pct:null,ref:null};});
+  return defs.map(function(d){var r=d[2];return r?{label:d[0],key:d[1],pct:(price/r[1]-1)*100,ref:r[1],refts:r[0]}:{label:d[0],key:d[1],pct:null,ref:null,refts:null};});
 }
 function derive(h){
   var m=MKT[h.y]||{}; var fx=fxOf(h.c);
@@ -145,11 +146,18 @@ function deriveAll(){return HOLD.map(derive);}
 function periodPct(d,key){ if(!d.per)return null; for(var i=0;i<d.per.length;i++){if(d.per[i].key===key)return d.per[i].pct;} return null; }
 function portfolioPeriods(){
   var d=deriveAll();
-  var defs=[["day","I dag"],["week","Uge"],["w2","2 uger"],["w3","3 uger"],["month","1 md"],["w6","6 uger"],["m2","2 mdr"],["m6","\u00bd \u00e5r"],["y52","1 \u00e5r"],["ytd","\u00c5r til dato"]];
-  var res=defs.map(function(p){return {key:p[0],label:p[1],now:0,then:0,n:0};});
-  d.forEach(function(x){ if(!x.has||!x.per)return; var fx=x.fx,sh=x.h.s,price=x.price;
-    x.per.forEach(function(pp){ if(pp.ref==null)return; for(var i=0;i<res.length;i++){ if(res[i].key===pp.key){res[i].now+=price*sh*fx;res[i].then+=pp.ref*sh*fx;res[i].n++;break;} } }); });
-  return res.map(function(r){var k=r.now-r.then;return {label:r.label,key:r.key,kr:k,pct:r.then>0?(k/r.then*100):null,n:r.n};});
+  var defs=[["day","I dag",1],["week","Uge",7],["w2","2 uger",14],["w3","3 uger",21],["month","1 md",30],["w6","6 uger",42],["m2","2 mdr",60],["m6","\u00bd \u00e5r",182],["y52","1 \u00e5r",365],["ytd","\u00c5r til dato",null]];
+  var nowMs=Date.now();
+  function startMs(key,days){ if(key==="ytd")return new Date(new Date().getFullYear(),0,1).getTime(); return nowMs-days*86400000; }
+  var res=defs.map(function(p){return {key:p[0],label:p[1],start:startMs(p[0],p[2]),now:0,then:0};});
+  d.forEach(function(x){ if(!x.has||!x.per)return; var sh=x.h.s,price=x.price,c=x.h.c,fxn=fxOf(c);
+    x.per.forEach(function(pp){ if(pp.ref==null)return; for(var i=0;i<res.length;i++){ if(res[i].key===pp.key){res[i].now+=price*sh*fxn;res[i].then+=pp.ref*sh*fxAt(c,pp.refts);break;} } }); });
+  var rev=(PORT.realEv||[]),dv=(PORT.divEv||[]);
+  return res.map(function(r){var realK=0,divK=0,i;
+    for(i=0;i<rev.length;i++)if(rev[i][0]>=r.start)realK+=rev[i][1];
+    for(i=0;i<dv.length;i++)if(dv[i][0]>=r.start)divK+=dv[i][1];
+    var k=(r.now-r.then)+realK+divK;
+    return {label:r.label,key:r.key,kr:k,pct:r.then>0?(k/r.then*100):null};});
 }
 function posTjent(x){return x.has?((x.gev||0)+(x.div||0)):null;}
 function tjentLine(x){var t=posTjent(x);if(t==null)return '<div class="faint mono" style="font-size:11px">\u2013</div>';return '<div class="mono" style="font-size:11px;color:'+col(t)+'">'+krS(t)+' inkl. udb.</div><div class="faint mono" style="font-size:10.5px">udb. '+kr(x.div||0)+'</div>';}
@@ -180,7 +188,7 @@ function header(){
 function overView(){
   var d=deriveAll();
   var pp=portfolioPeriods();
-  var periodCard='<div class="card"><div class="lbl">Afkast pr. periode \u2013 hele portef\u00f8ljen</div>'+pp.map(function(r){return '<div class="li2" style="padding:7px 0"><div class="row"><div style="font-size:13.5px">'+r.label+'</div><div style="text-align:right"><div class="mono" style="font-size:13.5px;color:'+col(r.pct)+'">'+pct(r.pct)+'</div><div class="faint mono" style="font-size:11px;color:'+col(r.kr)+'">'+krS(r.kr)+'</div></div></div></div>';}).join("")+'</div>';
+  var periodCard='<div class="card"><div class="lbl">Afkast pr. periode (tiln\u00e6rmet Saxo)</div>'+pp.map(function(r){return '<div class="li2" style="padding:7px 0"><div class="row"><div style="font-size:13.5px">'+r.label+'</div><div style="text-align:right"><div class="mono" style="font-size:13.5px;color:'+col(r.pct)+'">'+pct(r.pct)+'</div><div class="faint mono" style="font-size:11px;color:'+col(r.kr)+'">'+krS(r.kr)+'</div></div></div></div>';}).join("")+'<div class="faint" style="font-size:10.5px;margin-top:8px;line-height:1.4">Inkl. kursudvikling, valuta, udbytter og realiserede handler i perioden \u2013 tiln\u00e6rmet Saxos metode. Sm\u00e5 afvigelser (gebyrer, renter, kontant) kan forekomme; Saxo er den n\u00f8jagtige kilde.</div></div>';
   var mv=0,cost=0,day=0,miss=0;
   d.forEach(function(x){ if(x.has){mv+=x.mv;cost+=x.cost;if(x.dayKr!=null)day+=x.dayKr;} else miss++; });
   var gev=mv-cost; var tjent=gev+(PORT.r||0)+(PORT.d||0);
@@ -326,7 +334,7 @@ function bindSet(){
 
 /* ---------- init ---------- */
 (function init(){
-  HOLD=lsGet(KEYS.hold); PORT=lsGet(KEYS.port)||{r:0,d:0}; MKT=lsGet(KEYS.mkt)||{}; FX=lsGet(KEYS.fx)||{DKK:1};
+  HOLD=lsGet(KEYS.hold); PORT=lsGet(KEYS.port)||{r:0,d:0}; MKT=lsGet(KEYS.mkt)||{}; FX=lsGet(KEYS.fx)||{DKK:1}; FXH=lsGet(KEYS.fxh)||{};
   render();
   if(HOLD){ refreshAll(false); }
 })();
